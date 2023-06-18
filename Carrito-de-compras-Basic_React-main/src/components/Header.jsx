@@ -1,5 +1,5 @@
-import { useState } from 'react';
-
+import { useState, useRef } from 'react';
+import emailjs from 'emailjs-com';
 
 export const Header = ({
 	allProducts,
@@ -10,13 +10,13 @@ export const Header = ({
 	setTotal,
 }) => {
 	const [active, setActive] = useState(false);
-
+	const form = useRef()
 	const onDeleteProduct = product => {
 		const results = allProducts.filter(
-			item => item.id !== product.id
+			item => item.id_producto !== product.id_producto
 		);
 
-		setTotal(total - product.price * product.quantity);
+		setTotal(total - product.precio_producto * product.quantity);
 		setCountProducts(countProducts - product.quantity);
 		setAllProducts(results);
 	};
@@ -34,9 +34,31 @@ export const Header = ({
 		emailjs.sendForm('service_wiqp7cq', 'template_a7mkhdb', form.current, '90258A_CXjFdkTpjY')
 			.then((result) => {
 				console.log(result.text);
+				location.reload();
 			}, (error) => {
 				console.log(error.text);
 			});
+		e.target.reset()
+		allProducts.forEach(producto => {
+			const productoId = producto.id_producto;
+			const cantidad = producto.quantity;
+
+			fetch(`http://localhost:3001/productos/${productoId}`, {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({ cantidad: cantidad })
+			})
+				.then(response => response.json())
+				.then(data => {
+					console.log(data.message);
+				})
+				.catch(error => {
+					console.error('Error:', error);
+				});
+		})
+		// location.reload();
 	};
 	//
 
@@ -84,16 +106,16 @@ export const Header = ({
 						<>
 							<div className='row-product'>
 								{allProducts.map(product => (
-									<div className='cart-product' key={product.id}>
+									<div className='cart-product' key={product.id_producto}>
 										<div className='info-cart-product'>
 											<span className='cantidad-producto-carrito'>
 												{product.quantity}
 											</span>
 											<p className='titulo-producto-carrito'>
-												{product.nameProduct}
+												{product.nombre_producto}
 											</p>
 											<span className='precio-producto-carrito'>
-												${product.price}
+												${product.precio_producto}
 											</span>
 										</div>
 										<svg
@@ -115,27 +137,30 @@ export const Header = ({
 								))}
 							</div>
 							<div>
-								<form  onSubmit={sendEmail}>
+								<form ref={form} onSubmit={sendEmail}>
 									<label>Name</label>
 									<input type="text" name="user_name" />
 									<label>Email</label>
 									<input type="email" name="user_email" />
 									<label>Message</label>
-									<textarea name="message" />
-									<input type="submit" value="Send"/>
+									<textarea name="total"
+										value={allProducts.map((producto) => `${producto.quantity} ${producto.nombre_producto} $${producto.precio_producto} c/u`).join("\n")}
+										readOnly
+										required />
+									{/* <input type="submit" value="Send" /> */}
+									<div className='cart-total'>
+										<h3>Total:</h3>
+										<span className='total-pagar' >${total}</span>
+									</div>
+
+									<button className='btn-clear-all' onClick={onCleanCart}>
+										Vaciar Carrito
+									</button>
+
+
+									<input className='btn-clear-all' type='submit' value={'Realizar Compra'} />
 								</form>
 							</div>
-							<div className='cart-total'>
-								<h3>Total:</h3>
-								<span className='total-pagar' >${total}</span>
-							</div>
-
-
-							<button className='btn-clear-all' onClick={onCleanCart}>
-								Vaciar Carrito
-							</button>
-
-							<button className='btn-clear-all' type='submit' onClick={sendEmail}> Realizar Compra</button>
 						</>
 					) : (
 						<p className='cart-empty'>El carrito está vacío</p>
